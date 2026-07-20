@@ -73,6 +73,7 @@ export async function getPortfolio(address: string): Promise<PortfolioResponse> 
       value: balance * asset.price,
       change24h: asset.change24h,
       color: asset.color,
+      logoUrl: asset.logoUrl,
     }];
   }).sort((a, b) => b.value - a.value);
   const trackedMints = new Set(market.assets.map((asset) => asset.mint).filter(Boolean));

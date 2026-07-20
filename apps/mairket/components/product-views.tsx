@@ -56,8 +56,8 @@ function Direction({ value }: { value: number }) {
   return <span className={value >= 0 ? "positive-text" : "negative-text"}><Icon size={13} /> {value >= 0 ? "+" : ""}{value.toFixed(2)}%</span>;
 }
 
-function Mark({ asset }: { asset: Pick<MarketAsset, "symbol" | "color"> }) {
-  return <span className="asset-mark small" style={{ "--asset-color": asset.color } as React.CSSProperties}>{asset.symbol[0]}</span>;
+function Mark({ asset }: { asset: Pick<MarketAsset, "symbol" | "color" | "logoUrl"> }) {
+  return <span className="asset-mark has-logo small" style={{ "--asset-color": asset.color, "--asset-logo": `url("${asset.logoUrl}")` } as React.CSSProperties}><span className="asset-letter">{asset.symbol[0]}</span></span>;
 }
 
 function Empty({ title, body }: { title: string; body: string }) {
@@ -172,7 +172,7 @@ function PortfolioView({ assets, wallet, onConnectWallet, onNotify }: Pick<Produ
         </section>
         <section className="panel workspace-panel">
           <div className="workspace-heading"><div><span className="panel-label">PORTFOLIO HOLDINGS</span><h2>Current positions</h2></div><button className="copy-wallet" onClick={() => void copyAddress()}><Copy size={14} /> {portfolio.address.slice(0, 7)}...{portfolio.address.slice(-7)}</button></div>
-          {portfolio.holdings.length ? <div className="holding-list">{portfolio.holdings.map((holding) => <div key={holding.symbol}><span className="asset-mark small" style={{ "--asset-color": holding.color } as React.CSSProperties}>{holding.symbol[0]}</span><span><strong>{holding.name}</strong><small>{holding.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {holding.symbol}</small></span><span><small>Price</small><strong>{money(holding.price)}</strong></span><Direction value={holding.change24h} /><strong>{money(holding.value)}</strong></div>)}</div> : <Empty title="No tracked holdings found" body="The wallet may contain other SPL tokens that are not yet in the ARket universe." />}
+          {portfolio.holdings.length ? <div className="holding-list">{portfolio.holdings.map((holding) => <div key={holding.symbol}><span className="asset-mark has-logo small" style={{ "--asset-color": holding.color, "--asset-logo": `url("${holding.logoUrl}")` } as React.CSSProperties}><span className="asset-letter">{holding.symbol[0]}</span></span><span><strong>{holding.name}</strong><small>{holding.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {holding.symbol}</small></span><span><small>Price</small><strong>{money(holding.price)}</strong></span><Direction value={holding.change24h} /><strong>{money(holding.value)}</strong></div>)}</div> : <Empty title="No tracked holdings found" body="The wallet may contain other SPL tokens that are not yet in the ARket universe." />}
         </section>
       </>}
     </div>

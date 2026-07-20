@@ -88,10 +88,10 @@ function Change({ value }: { value: number }) {
   );
 }
 
-function AssetMark({ asset, small = false }: { asset: Pick<MarketAsset, "symbol" | "color">; small?: boolean }) {
+function AssetMark({ asset, small = false }: { asset: Pick<MarketAsset, "symbol" | "color" | "logoUrl">; small?: boolean }) {
   return (
-    <span className={`asset-mark ${small ? "small" : ""}`} style={{ "--asset-color": asset.color } as React.CSSProperties}>
-      {asset.symbol.slice(0, 1)}
+    <span className={`asset-mark has-logo ${small ? "small" : ""}`} style={{ "--asset-color": asset.color, "--asset-logo": `url("${asset.logoUrl}")` } as React.CSSProperties}>
+      <span className="asset-letter">{asset.symbol.slice(0, 1)}</span>
     </span>
   );
 }

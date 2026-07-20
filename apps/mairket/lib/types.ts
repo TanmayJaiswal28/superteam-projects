@@ -12,6 +12,7 @@ export interface MarketAsset {
   symbol: string;
   name: string;
   color: string;
+  logoUrl: string;
   price: number;
   change1h: number;
   change24h: number;
@@ -57,6 +58,7 @@ export interface PortfolioHolding {
   value: number;
   change24h: number;
   color: string;
+  logoUrl: string;
 }
 
 export interface PortfolioResponse {
@@ -87,6 +89,7 @@ export interface CoinGeckoAsset {
   id: string;
   symbol: string;
   name: string;
+  image?: string;
   current_price: number;
   market_cap: number;
   total_volume: number;

@@ -114,6 +114,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--purple-ligh
 .asset-title { display: flex; align-items: center; gap: 10px; margin-top: 13px; }
 .asset-mark { width: 39px; height: 39px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; color: white; font-weight: 750; font-size: 15px; background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--asset-color), white 28%), var(--asset-color) 50%, color-mix(in srgb, var(--asset-color), black 30%)); box-shadow: 0 0 20px color-mix(in srgb, var(--asset-color), transparent 72%); }
 .asset-mark.small { width: 30px; height: 30px; font-size: 11px; }
+.asset-mark.has-logo { border: 1px solid color-mix(in srgb, var(--asset-color), white 18%); background-color: #111218; background-image: var(--asset-logo), radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--asset-color), white 28%), var(--asset-color) 50%, color-mix(in srgb, var(--asset-color), black 30%)); background-position: center, center; background-repeat: no-repeat, no-repeat; background-size: 78%, cover; }
+.asset-mark.has-logo .asset-letter { opacity: 0; }
 .asset-title h2 { margin: 0 0 3px; font-size: 15px; letter-spacing: -.25px; }.asset-title h2 span { color: #6d6f7b; font-size: 10px; font-weight: 520; }.asset-title p { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 11px; font-weight: 570; }
 .change { display: inline-flex; align-items: center; gap: 2px; font-size: 10px; font-weight: 590; }.change.positive { color: var(--green); }.change.negative { color: var(--red); }
 .timeframe-tabs { display: flex; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: #0b0c10; }

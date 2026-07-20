@@ -2,12 +2,12 @@ import { buildHistory, forecastMarket, summarizeMarket } from "./prediction-engi
 import type { CoinGeckoAsset, MarketAsset, MarketResponse } from "./types";
 
 const TRACKED_ASSETS = [
-  { id: "solana", mint: null, symbol: "SOL", name: "Solana", color: "#8b5cf6", price: 176.42, change24h: 4.82 },
-  { id: "jupiter-exchange-solana", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", symbol: "JUP", name: "Jupiter", color: "#22d3a7", price: 0.876, change24h: 2.61 },
-  { id: "bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6HKbTgDbnY5fQV", symbol: "BONK", name: "Bonk", color: "#f59e0b", price: 0.00002143, change24h: -1.26 },
-  { id: "raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", symbol: "RAY", name: "Raydium", color: "#38bdf8", price: 2.91, change24h: 6.34 },
-  { id: "pyth-network", mint: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", symbol: "PYTH", name: "Pyth Network", color: "#ef7cf2", price: 0.174, change24h: -0.54 },
-  { id: "chainlink", mint: null, symbol: "LINK", name: "Chainlink", color: "#4f7cff", price: 18.76, change24h: 1.91 },
+  { id: "solana", mint: null, symbol: "SOL", name: "Solana", color: "#8b5cf6", logoUrl: "https://coin-images.coingecko.com/coins/images/4128/large/solana.png", price: 176.42, change24h: 4.82 },
+  { id: "jupiter-exchange-solana", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", symbol: "JUP", name: "Jupiter", color: "#22d3a7", logoUrl: "https://coin-images.coingecko.com/coins/images/34188/large/jup.png", price: 0.876, change24h: 2.61 },
+  { id: "bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6HKbTgDbnY5fQV", symbol: "BONK", name: "Bonk", color: "#f59e0b", logoUrl: "https://coin-images.coingecko.com/coins/images/28600/large/bonk.jpg", price: 0.00002143, change24h: -1.26 },
+  { id: "raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", symbol: "RAY", name: "Raydium", color: "#38bdf8", logoUrl: "https://coin-images.coingecko.com/coins/images/13928/large/PSigc4ie_400x400.jpg", price: 2.91, change24h: 6.34 },
+  { id: "pyth-network", mint: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3", symbol: "PYTH", name: "Pyth Network", color: "#ef7cf2", logoUrl: "https://coin-images.coingecko.com/coins/images/31924/large/pyth.png", price: 0.174, change24h: -0.54 },
+  { id: "chainlink", mint: null, symbol: "LINK", name: "Chainlink", color: "#4f7cff", logoUrl: "https://coin-images.coingecko.com/coins/images/877/large/Chainlink_Logo_500.png", price: 18.76, change24h: 1.91 },
 ] as const;
 
 export const SUPPORTED_SYMBOLS = TRACKED_ASSETS.map((asset) => asset.symbol);
@@ -35,6 +35,7 @@ function toMarketAsset(raw: CoinGeckoAsset, fallback: (typeof TRACKED_ASSETS)[nu
     symbol: fallback.symbol,
     name: fallback.name,
     color: fallback.color,
+    logoUrl: raw.image ?? fallback.logoUrl,
     price: raw.current_price,
     change1h: raw.price_change_percentage_1h_in_currency ?? 0,
     change24h: raw.price_change_percentage_24h_in_currency ?? 0,
