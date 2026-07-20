@@ -41,7 +41,7 @@ npm run build
 
 ## Deployment
 
-The root Dockerfile creates a non-root standalone Next.js image. Deploy it to Railway, Render, Fly.io, or any container host and attach persistent storage at `/app/apps/mairket/.data`.
+The root Dockerfile creates a non-root standalone Next.js image. Deploy it to Railway, Render, Fly.io, or any container host and attach persistent storage at `/app/apps/arket/.data`.
 
 ```bash
 docker compose up --build
