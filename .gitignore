@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-stale/
+.typescript7-stale/
+
+# Next.js
+.next/
+out/
+
+# local environment
+.env
+.env.local
+.env.*.local
+
+# tooling
+coverage/
+*.tsbuildinfo
+.eslintcache
+
+# editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*

@@ -1,0 +1,24 @@
+{
+  "name": "superteam-projects",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=@superteam/mairket",
+    "build": "npm run build --workspace=@superteam/mairket",
+    "lint": "npm run lint --workspace=@superteam/mairket",
+    "typecheck": "npm run typecheck --workspace=@superteam/mairket",
+    "test": "npm run test --workspace=@superteam/mairket"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "overrides": {
+    "postcss": "$postcss"
+  },
+  "devDependencies": {
+    "postcss": "^8.5.20"
+  }
+}
