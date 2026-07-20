@@ -1,55 +1,63 @@
-# mAIrket
+# ARket
 
-mAIrket is a full-stack intelligence dashboard for Solana DeFi markets. It combines live market and on-chain data with a transparent momentum ensemble to produce 24-hour directional forecasts, confidence scores, volatility estimates, portfolios, persistent alerts, and watchlist signals.
+ARket is a publishable Solana DeFi intelligence product. It combines live market data, a transparent momentum ensemble, public Solana RPC portfolio inspection, multi-wallet connection, wallet-scoped watchlists, price alerts, and persisted prediction history.
 
-## Features
+## Product surfaces
 
-- Live SOL ecosystem pricing with resilient offline fallback data
-- 24-hour forecast, signal, confidence, and annualized volatility metrics
-- Interactive historical and projected price chart
-- Server-persisted watchlists, price alerts, and forecast snapshots using SQLite
-- Phantom-compatible connection plus read-only analysis of any public Solana wallet
-- Live Solana RPC failover with graceful partial results under public-provider limits
-- Public JSON endpoints for markets, predictions, history, portfolios, watchlists, and alerts
-- Responsive, accessible interface with loading, empty, error, and fallback states
+- Animated public landing page at `/`
+- Live intelligence workspace at `/app`
+- Phantom, Solflare, and Backpack browser-wallet connection
+- Anonymous or wallet-scoped watchlists and alert rules
+- Live market data with a resilient fallback feed
+- Explainable 24-hour forecasts, volatility, confidence, and risk signals
+- Read-only SOL and supported SPL portfolio inspection
+- JSON APIs and `/api/health` deployment probe
 
-## Architecture
+Wallet connection is non-custodial. The application requests public-key access only and never asks for a seed phrase or private key.
 
-The MVP uses a transparent momentum ensemble rather than presenting simulated output as a trained neural network. It blends multi-horizon price changes with short/long exponential moving-average divergence, then applies a volatility dampener and directional confidence score. The service boundary is ready to be replaced by a trained model and decentralized oracle publisher.
+## Local development
 
-## Run locally
-
-From the monorepo root:
+From the repository root:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
-
-The app creates its local database at `apps/mairket/.data/mairket.sqlite`.
-
-For complete SPL-token portfolio discovery in production, provide a dedicated Solana RPC endpoint:
+Open `http://localhost:3000`. Run all gates with:
 
 ```bash
-SOLANA_RPC_URL=https://your-provider.example npm run dev
+npm run lint
+npm run typecheck
+npm run test
+npm run build
 ```
 
-Public Solana endpoints are rate-limited. Without a dedicated endpoint, mAIrket still returns SOL balances and clearly marks token discovery as partial.
+## Environment
 
-## API
+`SOLANA_RPC_URL` is optional locally and strongly recommended in production. Public RPC endpoints may block token-account discovery; ARket still returns the SOL balance and an explicit partial-data warning.
 
-| Route | Methods | Purpose |
-| --- | --- | --- |
-| `/api/markets` | GET | Live market data and prediction output |
-| `/api/predictions/:symbol` | GET | Current asset forecast |
-| `/api/predictions/:symbol/history` | GET | Persisted forecast snapshots |
-| `/api/watchlist` | GET, PUT, DELETE | Watchlist persistence |
-| `/api/alerts` | GET, POST | Alert evaluation and creation |
-| `/api/alerts/:id` | PATCH, DELETE | Pause, resume, or delete an alert |
-| `/api/portfolio/:address` | GET | Read-only Solana portfolio lookup |
+`ARKET_DB_PATH` selects the SQLite file. It defaults to `.data/arket.sqlite` from the app process working directory.
 
-## Disclaimer
+## Deployment
 
-Forecasts are experimental research signals and are not financial advice.
+The root Dockerfile creates a non-root standalone Next.js image. Deploy it to Railway, Render, Fly.io, or any container host and attach persistent storage at `/app/apps/mairket/.data`.
+
+```bash
+docker compose up --build
+```
+
+The compose definition exposes port 3000, persists ARket data, and includes container health monitoring.
+
+## API routes
+
+- `GET /api/markets`
+- `GET /api/predictions/:symbol`
+- `GET /api/predictions/:symbol/history`
+- `GET|PUT|DELETE /api/watchlist` with an `owner`
+- `GET|POST /api/alerts` with an `owner`
+- `PATCH|DELETE /api/alerts/:id` with an `owner`
+- `GET /api/portfolio/:address`
+- `GET /api/health`
+
+Forecasts are experimental research outputs, not financial advice.

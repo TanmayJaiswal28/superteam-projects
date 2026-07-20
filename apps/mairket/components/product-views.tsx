@@ -33,6 +33,7 @@ type ProductViewsProps = {
   favorites: string[];
   selectedSymbol: string;
   wallet: string;
+  ownerId: string;
   refreshInterval: number;
   onSelect: (symbol: string) => void;
   onFavorite: (symbol: string) => void;
@@ -94,7 +95,7 @@ function SignalsView({ assets, selectedSymbol, onSelect }: Pick<ProductViewsProp
         ))}
       </section>
       <section className="panel history-panel">
-        <div className="workspace-heading"><div><span className="panel-label"><BrainCircuit size={15} /> PREDICTION AUDIT TRAIL</span><h2>{selected?.name ?? "Asset"} forecast history</h2><p>Five-minute snapshots persisted by the mAIrket API.</p></div><span className="api-status"><i /> DATABASE ONLINE</span></div>
+        <div className="workspace-heading"><div><span className="panel-label"><BrainCircuit size={15} /> PREDICTION AUDIT TRAIL</span><h2>{selected?.name ?? "Asset"} forecast history</h2><p>Five-minute snapshots persisted by the ARket API.</p></div><span className="api-status"><i /> DATABASE ONLINE</span></div>
         {history.length ? (
           <div className="history-list">
             {history.map((item) => <div key={item.createdAt}><span>{new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span><strong>{money(item.currentPrice)}</strong><span>→ {money(item.forecastPrice)}</span><Direction value={item.forecastChange} /><span>{item.confidence}%</span><span className={`signal-pill ${item.signal.toLowerCase().replace(" ", "-")}`}>{item.signal}</span></div>)}
@@ -157,7 +158,7 @@ function PortfolioView({ assets, wallet, onConnectWallet, onNotify }: Pick<Produ
   return (
     <div className="workspace-stack">
       <section className="panel portfolio-connect-panel">
-        <div className="workspace-heading"><div><span className="panel-label"><WalletCards size={15} /> READ-ONLY SOLANA PORTFOLIO</span><h2>Inspect any public wallet</h2><p>Balances come directly from Solana mainnet RPC. mAIrket never requests signing access.</p></div><span className="api-status"><i /> SOLANA RPC</span></div>
+        <div className="workspace-heading"><div><span className="panel-label"><WalletCards size={15} /> READ-ONLY SOLANA PORTFOLIO</span><h2>Inspect any public wallet</h2><p>Balances come directly from Solana mainnet RPC. ARket never requests signing access.</p></div><span className="api-status"><i /> SOLANA RPC</span></div>
         <div className="wallet-lookup"><input value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Paste a Solana wallet address" aria-label="Solana wallet address" /><button onClick={() => void inspect()} disabled={loading}>{loading ? <LoaderCircle className="spin" size={16} /> : <Activity size={16} />} Analyze portfolio</button></div>
         <div className="wallet-shortcuts"><button onClick={onConnectWallet}><WalletCards size={15} /> {wallet ? "Reconnect Phantom" : "Connect Phantom"}</button>{wallet && <button onClick={() => { setAddress(wallet); void inspect(wallet); }}><Check size={15} /> Use {wallet.slice(0, 5)}...{wallet.slice(-5)}</button>}</div>
         {error && <div className="inline-error"><XCircle size={16} /> {error}</div>}
@@ -171,14 +172,14 @@ function PortfolioView({ assets, wallet, onConnectWallet, onNotify }: Pick<Produ
         </section>
         <section className="panel workspace-panel">
           <div className="workspace-heading"><div><span className="panel-label">PORTFOLIO HOLDINGS</span><h2>Current positions</h2></div><button className="copy-wallet" onClick={() => void copyAddress()}><Copy size={14} /> {portfolio.address.slice(0, 7)}...{portfolio.address.slice(-7)}</button></div>
-          {portfolio.holdings.length ? <div className="holding-list">{portfolio.holdings.map((holding) => <div key={holding.symbol}><span className="asset-mark small" style={{ "--asset-color": holding.color } as React.CSSProperties}>{holding.symbol[0]}</span><span><strong>{holding.name}</strong><small>{holding.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {holding.symbol}</small></span><span><small>Price</small><strong>{money(holding.price)}</strong></span><Direction value={holding.change24h} /><strong>{money(holding.value)}</strong></div>)}</div> : <Empty title="No tracked holdings found" body="The wallet may contain other SPL tokens that are not yet in the mAIrket universe." />}
+          {portfolio.holdings.length ? <div className="holding-list">{portfolio.holdings.map((holding) => <div key={holding.symbol}><span className="asset-mark small" style={{ "--asset-color": holding.color } as React.CSSProperties}>{holding.symbol[0]}</span><span><strong>{holding.name}</strong><small>{holding.balance.toLocaleString(undefined, { maximumFractionDigits: 6 })} {holding.symbol}</small></span><span><small>Price</small><strong>{money(holding.price)}</strong></span><Direction value={holding.change24h} /><strong>{money(holding.value)}</strong></div>)}</div> : <Empty title="No tracked holdings found" body="The wallet may contain other SPL tokens that are not yet in the ARket universe." />}
         </section>
       </>}
     </div>
   );
 }
 
-function AlertsView({ assets, onAlertCount, onNotify }: Pick<ProductViewsProps, "assets" | "onAlertCount" | "onNotify">) {
+function AlertsView({ assets, ownerId, onAlertCount, onNotify }: Pick<ProductViewsProps, "assets" | "ownerId" | "onAlertCount" | "onNotify">) {
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
   const [symbol, setSymbol] = useState("SOL");
   const [direction, setDirection] = useState<"above" | "below">("above");
@@ -187,12 +188,12 @@ function AlertsView({ assets, onAlertCount, onNotify }: Pick<ProductViewsProps, 
 
   const loadAlerts = useCallback(async () => {
     try {
-      const response = await fetch("/api/alerts", { cache: "no-store" });
+      const response = await fetch(`/api/alerts?owner=${encodeURIComponent(ownerId)}`, { cache: "no-store" });
       const result = await response.json() as { alerts: AlertRule[] };
       setAlerts(result.alerts);
       onAlertCount(result.alerts.filter((alert) => alert.active).length);
     } finally { setLoading(false); }
-  }, [onAlertCount]);
+  }, [onAlertCount, ownerId]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void loadAlerts(), 0);
@@ -203,18 +204,18 @@ function AlertsView({ assets, onAlertCount, onNotify }: Pick<ProductViewsProps, 
   const create = async () => {
     const price = Number(target);
     if (!Number.isFinite(price) || price <= 0) { onNotify("Enter a valid positive target price"); return; }
-    const response = await fetch("/api/alerts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol, direction, targetPrice: price }) });
+    const response = await fetch("/api/alerts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ symbol, direction, targetPrice: price, owner: ownerId }) });
     if (!response.ok) { onNotify("Unable to create alert"); return; }
     setTarget(""); onNotify(`${symbol} price alert created`); await loadAlerts();
   };
 
   const toggle = async (alert: AlertRule) => {
-    await fetch(`/api/alerts/${alert.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !alert.active }) });
+    await fetch(`/api/alerts/${alert.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !alert.active, owner: ownerId }) });
     await loadAlerts();
   };
 
   const remove = async (alert: AlertRule) => {
-    await fetch(`/api/alerts/${alert.id}`, { method: "DELETE" });
+    await fetch(`/api/alerts/${alert.id}?owner=${encodeURIComponent(ownerId)}`, { method: "DELETE" });
     onNotify(`${alert.symbol} alert deleted`); await loadAlerts();
   };
 
@@ -241,7 +242,7 @@ function SettingsView({ onNotify, refreshInterval, onRefreshInterval }: Pick<Pro
   const [refresh, setRefresh] = useState(String(refreshInterval));
   const [risk, setRisk] = useState("balanced");
   const save = () => {
-    localStorage.setItem("mairket-settings", JSON.stringify({ currency, refresh, risk }));
+    localStorage.setItem("arket-settings", JSON.stringify({ currency, refresh, risk }));
     onRefreshInterval(Number(refresh));
     onNotify("Dashboard preferences saved");
   };
@@ -257,7 +258,7 @@ function DocsView() {
     ["GET · POST", "/api/alerts", "Alert evaluation and creation"],
     ["GET", "/api/portfolio/:address", "Read-only Solana wallet portfolio"],
   ];
-  return <div className="workspace-stack"><section className="panel docs-hero"><BookOpen size={29} /><div><span className="panel-label">MAIRKET API v0.2</span><h2>Developer documentation</h2><p>Server routes return JSON and are available from the same origin. No API key is required for local development.</p></div></section><section className="panel endpoint-list">{endpoints.map(([method, path, description]) => <div key={path}><span>{method}</span><code>{path}</code><p>{description}</p><a href={path.includes(":address") ? "https://solana.com/docs/rpc/http/gettokenaccountsbyowner" : path} target="_blank" rel="noreferrer"><ExternalLink size={14} /></a></div>)}</section><section className="panel docs-note"><Sparkles size={18} /><div><strong>Prediction methodology</strong><p>The current model is a transparent momentum ensemble using multi-horizon returns, short/long EMA divergence, annualized volatility damping, and directional confidence. It does not claim to be a trained neural network. Replace the service boundary with a trained model before representing it as one.</p></div></section></div>;
+  return <div className="workspace-stack"><section className="panel docs-hero"><BookOpen size={29} /><div><span className="panel-label">ARKET API v0.3</span><h2>Developer documentation</h2><p>Server routes return JSON and are available from the same origin. No API key is required for local development.</p></div></section><section className="panel endpoint-list">{endpoints.map(([method, path, description]) => <div key={path}><span>{method}</span><code>{path}</code><p>{description}</p><a href={path.includes(":address") ? "https://solana.com/docs/rpc/http/gettokenaccountsbyowner" : path} target="_blank" rel="noreferrer"><ExternalLink size={14} /></a></div>)}</section><section className="panel docs-note"><Sparkles size={18} /><div><strong>Prediction methodology</strong><p>The current model is a transparent momentum ensemble using multi-horizon returns, short/long EMA divergence, annualized volatility damping, and directional confidence. It does not claim to be a trained neural network. Replace the service boundary with a trained model before representing it as one.</p></div></section></div>;
 }
 
 export function ProductView(props: ProductViewsProps) {
@@ -265,7 +266,7 @@ export function ProductView(props: ProductViewsProps) {
   if (view === "signals") return <SignalsView assets={props.assets} selectedSymbol={props.selectedSymbol} onSelect={props.onSelect} />;
   if (view === "markets" || view === "watchlist") return <MarketsView assets={props.assets} favorites={props.favorites} watchlistOnly={view === "watchlist"} onSelect={props.onSelect} onFavorite={props.onFavorite} />;
   if (view === "portfolio") return <PortfolioView assets={props.assets} wallet={props.wallet} onConnectWallet={props.onConnectWallet} onNotify={props.onNotify} />;
-  if (view === "alerts") return <AlertsView assets={props.assets} onAlertCount={props.onAlertCount} onNotify={props.onNotify} />;
+  if (view === "alerts") return <AlertsView assets={props.assets} ownerId={props.ownerId} onAlertCount={props.onAlertCount} onNotify={props.onNotify} />;
   if (view === "settings") return <SettingsView onNotify={props.onNotify} refreshInterval={props.refreshInterval} onRefreshInterval={props.onRefreshInterval} />;
   return <DocsView />;
 }

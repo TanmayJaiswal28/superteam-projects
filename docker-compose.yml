@@ -1,0 +1,14 @@
+services:
+  arket:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      SOLANA_RPC_URL: ${SOLANA_RPC_URL:-}
+      ARKET_DB_PATH: /app/apps/mairket/.data/arket.sqlite
+    volumes:
+      - arket-data:/app/apps/mairket/.data
+    restart: unless-stopped
+
+volumes:
+  arket-data:

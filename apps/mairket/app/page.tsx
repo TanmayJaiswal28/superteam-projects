@@ -1,5 +1,5 @@
-import { MarketDashboard } from "@/components/market-dashboard";
+import { LandingPage } from "@/components/landing-page";
 
 export default function Home() {
-  return <MarketDashboard />;
+  return <LandingPage />;
 }

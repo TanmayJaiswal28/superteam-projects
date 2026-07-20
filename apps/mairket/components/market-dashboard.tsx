@@ -39,16 +39,26 @@ import {
 import type { MarketAsset, MarketResponse } from "@/lib/types";
 import { ProductView, type WorkspaceView } from "./product-views";
 
-type PhantomProvider = {
+type WalletProvider = {
   isPhantom?: boolean;
   connect: () => Promise<{ publicKey: { toString: () => string } }>;
+  disconnect?: () => Promise<void>;
 };
 
 declare global {
   interface Window {
-    solana?: PhantomProvider;
+    solana?: WalletProvider;
+    phantom?: { solana?: WalletProvider };
+    solflare?: WalletProvider;
+    backpack?: { solana?: WalletProvider };
   }
 }
+
+const WALLET_OPTIONS = [
+  { id: "phantom", name: "Phantom", initial: "P", url: "https://phantom.com/download" },
+  { id: "solflare", name: "Solflare", initial: "S", url: "https://solflare.com" },
+  { id: "backpack", name: "Backpack", initial: "B", url: "https://backpack.app" },
+] as const;
 
 const FALLBACK_SYMBOLS = ["SOL", "JUP", "BONK", "RAY", "PYTH", "LINK"];
 
@@ -121,10 +131,24 @@ export function MarketDashboard() {
   const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [wallet, setWallet] = useState("");
+  const [walletName, setWalletName] = useState("");
+  const [walletModal, setWalletModal] = useState(false);
+  const [walletConnecting, setWalletConnecting] = useState("");
+  const [ownerId, setOwnerId] = useState("anonymous");
   const [notice, setNotice] = useState("");
   const [activeView, setActiveView] = useState<"overview" | WorkspaceView>("overview");
   const [alertCount, setAlertCount] = useState(0);
   const [refreshInterval, setRefreshInterval] = useState(60);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem("arket-session-id");
+      const session = saved ?? `anon_${crypto.randomUUID()}`;
+      if (!saved) window.localStorage.setItem("arket-session-id", session);
+      setOwnerId(session);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const loadMarkets = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -147,7 +171,7 @@ export function MarketDashboard() {
     const initialTimer = window.setTimeout(() => void loadMarkets(), 0);
     const marketTimer = window.setInterval(() => void loadMarkets(), refreshInterval * 1_000);
     const favoritesTimer = window.setTimeout(async () => {
-      const savedSettings = window.localStorage.getItem("mairket-settings");
+      const savedSettings = window.localStorage.getItem("arket-settings") ?? window.localStorage.getItem("mairket-settings");
       if (savedSettings) {
         try {
           const parsed = JSON.parse(savedSettings) as { refresh?: string };
@@ -158,13 +182,13 @@ export function MarketDashboard() {
         }
       }
       try {
-        const response = await fetch("/api/watchlist", { cache: "no-store" });
+        const response = await fetch(`/api/watchlist?owner=${encodeURIComponent(ownerId)}`, { cache: "no-store" });
         if (!response.ok) throw new Error("Watchlist unavailable");
         const result = await response.json() as { symbols: string[] };
         setFavorites(result.symbols);
-        window.localStorage.setItem("mairket-watchlist", JSON.stringify(result.symbols));
+        window.localStorage.setItem(`arket-watchlist:${ownerId}`, JSON.stringify(result.symbols));
       } catch {
-        const stored = window.localStorage.getItem("mairket-watchlist");
+        const stored = window.localStorage.getItem(`arket-watchlist:${ownerId}`);
         if (stored) setFavorites(JSON.parse(stored) as string[]);
       }
     }, 0);
@@ -173,7 +197,7 @@ export function MarketDashboard() {
       window.clearInterval(marketTimer);
       window.clearTimeout(favoritesTimer);
     };
-  }, [loadMarkets, refreshInterval]);
+  }, [loadMarkets, refreshInterval, ownerId]);
 
   useEffect(() => {
     if (!notice) return;
@@ -204,12 +228,12 @@ export function MarketDashboard() {
     const previous = favorites;
     const next = removing ? favorites.filter((item) => item !== symbol) : [...favorites, symbol];
     setFavorites(next);
-    window.localStorage.setItem("mairket-watchlist", JSON.stringify(next));
+    window.localStorage.setItem(`arket-watchlist:${ownerId}`, JSON.stringify(next));
     try {
-      const response = await fetch(removing ? `/api/watchlist?symbol=${encodeURIComponent(symbol)}` : "/api/watchlist", {
+      const response = await fetch(removing ? `/api/watchlist?symbol=${encodeURIComponent(symbol)}&owner=${encodeURIComponent(ownerId)}` : "/api/watchlist", {
         method: removing ? "DELETE" : "PUT",
         headers: removing ? undefined : { "Content-Type": "application/json" },
-        body: removing ? undefined : JSON.stringify({ symbol }),
+        body: removing ? undefined : JSON.stringify({ symbol, owner: ownerId }),
       });
       if (!response.ok) throw new Error("Watchlist update failed");
       const result = await response.json() as { symbols: string[] };
@@ -236,27 +260,41 @@ export function MarketDashboard() {
     portfolio: { eyebrow: "ON-CHAIN PORTFOLIO", title: "Read your", accent: "Solana positions.", description: "Inspect public wallet balances using live mainnet RPC without requesting signing access." },
     alerts: { eyebrow: "AUTOMATED MONITORING", title: "Act on", accent: "market conditions.", description: "Create persistent price rules evaluated against every live market refresh." },
     settings: { eyebrow: "PRODUCT CONTROL", title: "Configure your", accent: "workspace.", description: "Manage dashboard preferences and risk presentation." },
-    docs: { eyebrow: "DEVELOPER PLATFORM", title: "Build with", accent: "mAIrket APIs.", description: "Use the market, prediction, portfolio, watchlist, and alert endpoints directly." },
+    docs: { eyebrow: "DEVELOPER PLATFORM", title: "Build with", accent: "ARket APIs.", description: "Use the market, prediction, portfolio, watchlist, and alert endpoints directly." },
   };
   const currentView = viewCopy[activeView];
 
-  const connectWallet = async () => {
+  const walletProvider = (id: string): WalletProvider | undefined => {
+    if (id === "phantom") return window.phantom?.solana ?? (window.solana?.isPhantom ? window.solana : undefined);
+    if (id === "solflare") return window.solflare;
+    if (id === "backpack") return window.backpack?.solana;
+  };
+
+  const connectWallet = async (id?: string) => {
     if (wallet) {
+      await walletProvider(walletName.toLowerCase())?.disconnect?.().catch(() => undefined);
       setWallet("");
+      setWalletName("");
+      setOwnerId(window.localStorage.getItem("arket-session-id") ?? "anonymous");
       setNotice("Wallet disconnected");
       return;
     }
-    if (!window.solana?.isPhantom) {
-      setNotice("Phantom wallet was not detected — dashboard remains read-only");
-      return;
-    }
+    if (!id) { setWalletModal(true); return; }
+    const option = WALLET_OPTIONS.find((item) => item.id === id);
+    const provider = walletProvider(id);
+    if (!provider) { window.open(option?.url, "_blank", "noopener,noreferrer"); setNotice(`${option?.name ?? "Wallet"} is not installed`); return; }
+    setWalletConnecting(id);
     try {
-      const response = await window.solana.connect();
-      setWallet(response.publicKey.toString());
-      setNotice("Wallet connected in read-only mode");
+      const response = await provider.connect();
+      const address = response.publicKey.toString();
+      setWallet(address);
+      setWalletName(option?.name ?? id);
+      setOwnerId(address);
+      setWalletModal(false);
+      setNotice(`${option?.name ?? "Wallet"} connected`);
     } catch {
       setNotice("Wallet connection was cancelled");
-    }
+    } finally { setWalletConnecting(""); }
   };
 
   return (
@@ -264,7 +302,7 @@ export function MarketDashboard() {
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="brand-row">
           <div className="brand-mark"><BrainCircuit size={23} /></div>
-          <div><strong>m<span>AI</span>rket</strong><small>DeFi intelligence</small></div>
+          <div><strong><span>AR</span>ket</strong><small>DeFi intelligence</small></div>
           <button className="icon-button close-menu" onClick={() => setMenuOpen(false)} aria-label="Close menu"><X size={19} /></button>
         </div>
 
@@ -299,7 +337,7 @@ export function MarketDashboard() {
           <div className="mobile-brand">
             <button className="icon-button" onClick={() => setMenuOpen(true)} aria-label="Open menu"><Menu size={20} /></button>
             <div className="brand-mark compact"><BrainCircuit size={19} /></div>
-            <strong>mAIrket</strong>
+            <strong>ARket</strong>
           </div>
           <div className="search-box">
             <Search size={17} />
@@ -309,7 +347,7 @@ export function MarketDashboard() {
           <div className="top-actions">
             <div className="network"><i /> Solana Mainnet <ChevronDown size={14} /></div>
             <button className="icon-button" aria-label="Notifications" onClick={() => changeView("alerts")}><Bell size={18} /><span className="button-dot" /></button>
-            <button className={`wallet-button ${wallet ? "connected" : ""}`} onClick={connectWallet}>
+            <button className={`wallet-button ${wallet ? "connected" : ""}`} onClick={() => void connectWallet()}>
               <WalletCards size={16} /> {wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : "Connect wallet"}
             </button>
           </div>
@@ -405,7 +443,7 @@ export function MarketDashboard() {
 
             <aside className="panel intelligence-panel">
               <div className="panel-title-row"><div><span className="panel-label"><BrainCircuit size={15} /> AI INTELLIGENCE</span><h2>Signal breakdown</h2></div><span className="ai-chip"><i /> ONLINE</span></div>
-              <div className="signal-hero"><span>mAIrket signal</span><strong className={selected?.signal === "Sell" ? "negative-text" : ""}>{selected?.signal ?? "Analyzing"}</strong><p>for {selected?.symbol ?? "the selected asset"} over the next 24 hours</p></div>
+              <div className="signal-hero"><span>ARket signal</span><strong className={selected?.signal === "Sell" ? "negative-text" : ""}>{selected?.signal ?? "Analyzing"}</strong><p>for {selected?.symbol ?? "the selected asset"} over the next 24 hours</p></div>
               <div className="factor-list">
                 <div><span><i className="factor-icon positive-bg"><ArrowUpRight size={14} /></i>Price momentum</span><strong className={(selected?.change24h ?? 0) >= 0 ? "positive-text" : "negative-text"}>{(selected?.change24h ?? 0) >= 0 ? "Positive" : "Negative"}</strong></div>
                 <div><span><i className="factor-icon purple-bg"><Activity size={14} /></i>Volatility regime</span><strong>{(selected?.volatility ?? 0) > 60 ? "Elevated" : "Stable"}</strong></div>
@@ -441,7 +479,7 @@ export function MarketDashboard() {
               )) : <div className="empty-state"><Search size={24} /><strong>No assets found</strong><span>Try a different search or clear the watchlist filter.</span></div>}
             </div>
           </section>
-          </> : <ProductView view={activeView} assets={assets} favorites={favorites} selectedSymbol={selectedSymbol} wallet={wallet} refreshInterval={refreshInterval} onSelect={setSelectedSymbol} onFavorite={(symbol) => void toggleFavorite(symbol)} onConnectWallet={() => void connectWallet()} onNotify={setNotice} onAlertCount={updateAlertCount} onRefreshInterval={setRefreshInterval} />}
+          </> : <ProductView view={activeView} assets={assets} favorites={favorites} selectedSymbol={selectedSymbol} wallet={wallet} ownerId={ownerId} refreshInterval={refreshInterval} onSelect={setSelectedSymbol} onFavorite={(symbol) => void toggleFavorite(symbol)} onConnectWallet={() => void connectWallet()} onNotify={setNotice} onAlertCount={updateAlertCount} onRefreshInterval={setRefreshInterval} />}
 
           <footer className="dashboard-footer">
             <span><ShieldCheck size={14} /> Experimental research signals · Never financial advice</span>
@@ -451,6 +489,7 @@ export function MarketDashboard() {
       </main>
 
       {notice && <div className="toast" role="status"><Sparkles size={16} /> {notice}</div>}
+      {walletModal && <div className="wallet-modal-backdrop" onMouseDown={() => setWalletModal(false)}><section className="wallet-modal" role="dialog" aria-modal="true" aria-labelledby="wallet-title" onMouseDown={(event) => event.stopPropagation()}><button className="wallet-close" onClick={() => setWalletModal(false)} aria-label="Close wallet selector"><X size={18} /></button><div className="wallet-modal-icon"><WalletCards size={24} /></div><span>ENTER ARKET</span><h2 id="wallet-title">Connect a Solana wallet</h2><p>Choose your wallet to unlock a persistent, wallet-scoped workspace. ARket never requests your seed phrase or takes custody.</p><div className="wallet-options">{WALLET_OPTIONS.map((option) => { const detected = Boolean(walletProvider(option.id)); return <button key={option.id} onClick={() => void connectWallet(option.id)} disabled={Boolean(walletConnecting)}><i>{option.initial}</i><span><strong>{option.name}</strong><small>{detected ? "Detected in browser" : "Install wallet"}</small></span>{walletConnecting === option.id ? <RefreshCw className="spin" size={17} /> : <ArrowUpRight size={17} />}</button>; })}</div><div className="wallet-safety"><ShieldCheck size={15} /> Connection is non-custodial and read-only until you approve an action.</div></section></div>}
     </div>
   );
 }

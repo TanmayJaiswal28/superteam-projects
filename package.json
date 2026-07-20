@@ -6,11 +6,12 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=@superteam/mairket",
-    "build": "npm run build --workspace=@superteam/mairket",
-    "lint": "npm run lint --workspace=@superteam/mairket",
-    "typecheck": "npm run typecheck --workspace=@superteam/mairket",
-    "test": "npm run test --workspace=@superteam/mairket"
+    "dev": "npm run dev --workspace=@superteam/arket",
+    "start": "npm run start --workspace=@superteam/arket",
+    "build": "npm run build --workspace=@superteam/arket",
+    "lint": "npm run lint --workspace=@superteam/arket",
+    "typecheck": "npm run typecheck --workspace=@superteam/arket",
+    "test": "npm run test --workspace=@superteam/arket"
   },
   "engines": {
     "node": ">=22.0.0"

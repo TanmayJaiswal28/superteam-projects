@@ -19,7 +19,7 @@ export async function GET(_request: Request, context: { params: Promise<{ symbol
     confidence: asset.confidence,
     volatility: asset.volatility,
     signal: asset.signal,
-    model: "mAIrket momentum ensemble v0.1",
+    model: "ARket momentum ensemble v0.3",
     generatedAt: data.updatedAt,
     disclaimer: "Forecasts are experimental research signals, not financial advice.",
   });
