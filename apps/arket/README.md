@@ -41,6 +41,14 @@ npm run build
 
 ## Deployment
 
+### Vercel
+
+Import `TanmayJaiswal28/superteam-projects` and set the Root Directory to `apps/arket`, or use the one-click Vercel button in the repository README. Configure `SOLANA_RPC_URL` for complete portfolio discovery.
+
+ARket uses `/tmp/arket.sqlite` when `VERCEL=1`. This makes all API routes deployable but the database is ephemeral across serverless cold starts. Use an external database for durable production alerts and watchlists.
+
+### Docker
+
 The root Dockerfile creates a non-root standalone Next.js image. Deploy it to Railway, Render, Fly.io, or any container host and attach persistent storage at `/app/apps/arket/.data`.
 
 ```bash

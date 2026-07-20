@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import type { AlertRule, MarketAsset, PredictionSnapshot } from "./types";
@@ -29,7 +30,8 @@ let database: DatabaseSync | null = null;
 
 function getDatabase() {
   if (database) return database;
-  const file = process.env.ARKET_DB_PATH ?? process.env.MAIRKET_DB_PATH ?? join(process.cwd(), ".data", "arket.sqlite");
+  const defaultFile = process.env.VERCEL ? join(tmpdir(), "arket.sqlite") : join(process.cwd(), ".data", "arket.sqlite");
+  const file = process.env.ARKET_DB_PATH ?? process.env.MAIRKET_DB_PATH ?? defaultFile;
   mkdirSync(dirname(file), { recursive: true });
   database = new DatabaseSync(file);
   database.exec(`

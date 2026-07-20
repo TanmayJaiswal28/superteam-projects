@@ -162,6 +162,16 @@ The current suite covers prediction behavior, storage persistence and workspace 
 
 ## Production deployment
 
+### Vercel
+
+[![Deploy ARket with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FTanmayJaiswal28%2Fsuperteam-projects&root-directory=apps%2Farket&project-name=arket&repository-name=superteam-projects)
+
+The button imports this repository with `apps/arket` selected as the Vercel Root Directory. Vercel automatically detects the npm workspace and Next.js framework. Add `SOLANA_RPC_URL` in the Vercel project environment variables for reliable portfolio token discovery.
+
+Vercel functions have ephemeral local storage. ARket automatically moves SQLite to the writable temporary directory on Vercel so every route can execute, but watchlists, alerts, and prediction history can reset after cold starts or move between function instances. Use the included Docker deployment with a persistent volume for durable SQLite, or replace the storage adapter with an external Postgres service before relying on durable user state.
+
+### Container deployment
+
 Run the production container locally:
 
 ```bash
