@@ -37,6 +37,7 @@ import {
   YAxis,
 } from "recharts";
 import type { MarketAsset, MarketResponse } from "@/lib/types";
+import { ProductView, type WorkspaceView } from "./product-views";
 
 type PhantomProvider = {
   isPhantom?: boolean;
@@ -121,6 +122,9 @@ export function MarketDashboard() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [wallet, setWallet] = useState("");
   const [notice, setNotice] = useState("");
+  const [activeView, setActiveView] = useState<"overview" | WorkspaceView>("overview");
+  const [alertCount, setAlertCount] = useState(0);
+  const [refreshInterval, setRefreshInterval] = useState(60);
 
   const loadMarkets = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -141,13 +145,27 @@ export function MarketDashboard() {
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => void loadMarkets(), 0);
-    const marketTimer = window.setInterval(() => void loadMarkets(), 60_000);
-    const favoritesTimer = window.setTimeout(() => {
+    const marketTimer = window.setInterval(() => void loadMarkets(), refreshInterval * 1_000);
+    const favoritesTimer = window.setTimeout(async () => {
+      const savedSettings = window.localStorage.getItem("mairket-settings");
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings) as { refresh?: string };
+          const savedRefresh = Number(parsed.refresh);
+          if ([30, 60, 300].includes(savedRefresh)) setRefreshInterval(savedRefresh);
+        } catch {
+          // Keep safe defaults when local settings are malformed.
+        }
+      }
       try {
+        const response = await fetch("/api/watchlist", { cache: "no-store" });
+        if (!response.ok) throw new Error("Watchlist unavailable");
+        const result = await response.json() as { symbols: string[] };
+        setFavorites(result.symbols);
+        window.localStorage.setItem("mairket-watchlist", JSON.stringify(result.symbols));
+      } catch {
         const stored = window.localStorage.getItem("mairket-watchlist");
         if (stored) setFavorites(JSON.parse(stored) as string[]);
-      } catch {
-        // Ignore invalid local preferences.
       }
     }, 0);
     return () => {
@@ -155,7 +173,7 @@ export function MarketDashboard() {
       window.clearInterval(marketTimer);
       window.clearTimeout(favoritesTimer);
     };
-  }, [loadMarkets]);
+  }, [loadMarkets, refreshInterval]);
 
   useEffect(() => {
     if (!notice) return;
@@ -181,13 +199,46 @@ export function MarketDashboard() {
     return history.slice(-horizon);
   }, [selected, timeframe]);
 
-  const toggleFavorite = (symbol: string) => {
-    setFavorites((current) => {
-      const next = current.includes(symbol) ? current.filter((item) => item !== symbol) : [...current, symbol];
-      window.localStorage.setItem("mairket-watchlist", JSON.stringify(next));
-      return next;
-    });
+  const toggleFavorite = async (symbol: string) => {
+    const removing = favorites.includes(symbol);
+    const previous = favorites;
+    const next = removing ? favorites.filter((item) => item !== symbol) : [...favorites, symbol];
+    setFavorites(next);
+    window.localStorage.setItem("mairket-watchlist", JSON.stringify(next));
+    try {
+      const response = await fetch(removing ? `/api/watchlist?symbol=${encodeURIComponent(symbol)}` : "/api/watchlist", {
+        method: removing ? "DELETE" : "PUT",
+        headers: removing ? undefined : { "Content-Type": "application/json" },
+        body: removing ? undefined : JSON.stringify({ symbol }),
+      });
+      if (!response.ok) throw new Error("Watchlist update failed");
+      const result = await response.json() as { symbols: string[] };
+      setFavorites(result.symbols);
+      setNotice(removing ? `${symbol} removed from watchlist` : `${symbol} added to watchlist`);
+    } catch {
+      setFavorites(previous);
+      setNotice("Watchlist update failed");
+    }
   };
+
+  const changeView = (view: "overview" | WorkspaceView) => {
+    setActiveView(view);
+    setMenuOpen(false);
+  };
+
+  const updateAlertCount = useCallback((count: number) => setAlertCount(count), []);
+
+  const viewCopy: Record<"overview" | WorkspaceView, { eyebrow: string; title: string; accent: string; description: string }> = {
+    overview: { eyebrow: "SOLANA MARKET INTELLIGENCE", title: "Good morning,", accent: "market explorer.", description: "AI-assisted signals that turn DeFi volatility into clear, explainable market context." },
+    signals: { eyebrow: "EXPLAINABLE PREDICTIONS", title: "Understand every", accent: "market signal.", description: "Inspect forecasts, confidence, model factors, and the persisted prediction audit trail." },
+    markets: { eyebrow: "LIVE MARKET DIRECTORY", title: "Track the", accent: "Solana ecosystem.", description: "Real-time prices and volatility-adjusted forecasts for supported assets." },
+    watchlist: { eyebrow: "PERSISTENT WATCHLIST", title: "Focus on", accent: "your markets.", description: "Your monitored assets are stored by the backend and available across reloads." },
+    portfolio: { eyebrow: "ON-CHAIN PORTFOLIO", title: "Read your", accent: "Solana positions.", description: "Inspect public wallet balances using live mainnet RPC without requesting signing access." },
+    alerts: { eyebrow: "AUTOMATED MONITORING", title: "Act on", accent: "market conditions.", description: "Create persistent price rules evaluated against every live market refresh." },
+    settings: { eyebrow: "PRODUCT CONTROL", title: "Configure your", accent: "workspace.", description: "Manage dashboard preferences and risk presentation." },
+    docs: { eyebrow: "DEVELOPER PLATFORM", title: "Build with", accent: "mAIrket APIs.", description: "Use the market, prediction, portfolio, watchlist, and alert endpoints directly." },
+  };
+  const currentView = viewCopy[activeView];
 
   const connectWallet = async () => {
     if (wallet) {
@@ -219,24 +270,24 @@ export function MarketDashboard() {
 
         <nav className="primary-nav" aria-label="Primary navigation">
           <p>Workspace</p>
-          <button className="nav-item active"><LayoutDashboard size={18} /> Overview</button>
-          <button className="nav-item"><Sparkles size={18} /> AI Signals <span className="nav-count">12</span></button>
-          <button className="nav-item"><BarChart3 size={18} /> Markets</button>
-          <button className="nav-item"><Eye size={18} /> Watchlist <span className="nav-count">{favorites.length}</span></button>
+          <button className={`nav-item ${activeView === "overview" ? "active" : ""}`} onClick={() => changeView("overview")}><LayoutDashboard size={18} /> Overview</button>
+          <button className={`nav-item ${activeView === "signals" ? "active" : ""}`} onClick={() => changeView("signals")}><Sparkles size={18} /> AI Signals <span className="nav-count">{assets.filter((asset) => asset.signal !== "Hold").length}</span></button>
+          <button className={`nav-item ${activeView === "markets" ? "active" : ""}`} onClick={() => changeView("markets")}><BarChart3 size={18} /> Markets</button>
+          <button className={`nav-item ${activeView === "watchlist" ? "active" : ""}`} onClick={() => changeView("watchlist")}><Eye size={18} /> Watchlist <span className="nav-count">{favorites.length}</span></button>
           <p>Account</p>
-          <button className="nav-item"><WalletCards size={18} /> Portfolio</button>
-          <button className="nav-item"><Bell size={18} /> Alerts <span className="notification-dot" /></button>
+          <button className={`nav-item ${activeView === "portfolio" ? "active" : ""}`} onClick={() => changeView("portfolio")}><WalletCards size={18} /> Portfolio</button>
+          <button className={`nav-item ${activeView === "alerts" ? "active" : ""}`} onClick={() => changeView("alerts")}><Bell size={18} /> Alerts {alertCount > 0 ? <span className="nav-count">{alertCount}</span> : <span className="notification-dot" />}</button>
         </nav>
 
         <div className="model-card">
           <div className="model-icon"><Bot size={20} /></div>
-          <div><span>Prediction engine</span><strong>Momentum ensemble v0.1</strong></div>
+          <div><span>Prediction engine</span><strong>Momentum ensemble v0.2</strong></div>
           <div className="live-line"><i /> Operational</div>
         </div>
 
         <div className="sidebar-footer">
-          <button className="nav-item"><Settings size={18} /> Settings</button>
-          <button className="nav-item"><CircleHelp size={18} /> Documentation</button>
+          <button className={`nav-item ${activeView === "settings" ? "active" : ""}`} onClick={() => changeView("settings")}><Settings size={18} /> Settings</button>
+          <button className={`nav-item ${activeView === "docs" ? "active" : ""}`} onClick={() => changeView("docs")}><CircleHelp size={18} /> Documentation</button>
           <p>Experimental signals · Not financial advice</p>
         </div>
       </aside>
@@ -257,7 +308,7 @@ export function MarketDashboard() {
           </div>
           <div className="top-actions">
             <div className="network"><i /> Solana Mainnet <ChevronDown size={14} /></div>
-            <button className="icon-button" aria-label="Notifications"><Bell size={18} /><span className="button-dot" /></button>
+            <button className="icon-button" aria-label="Notifications" onClick={() => changeView("alerts")}><Bell size={18} /><span className="button-dot" /></button>
             <button className={`wallet-button ${wallet ? "connected" : ""}`} onClick={connectWallet}>
               <WalletCards size={16} /> {wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : "Connect wallet"}
             </button>
@@ -267,15 +318,16 @@ export function MarketDashboard() {
         <div className="dashboard">
           <section className="welcome-row">
             <div>
-              <div className="eyebrow"><span className="live-badge"><i /> LIVE</span> SOLANA MARKET INTELLIGENCE</div>
-              <h1>Good morning, <span>market explorer.</span></h1>
-              <p>AI-assisted signals that turn DeFi volatility into clear, explainable market context.</p>
+              <div className="eyebrow"><span className="live-badge"><i /> LIVE</span> {currentView.eyebrow}</div>
+              <h1>{currentView.title} <span>{currentView.accent}</span></h1>
+              <p>{currentView.description}</p>
             </div>
             <button className="refresh-button" onClick={() => void loadMarkets(true)} disabled={refreshing}>
               <RefreshCw className={refreshing ? "spin" : ""} size={16} /> Refresh data
             </button>
           </section>
 
+          {activeView === "overview" ? <>
           {error && (
             <div className="error-banner" role="alert">
               <span><Activity size={18} /> {error}</span>
@@ -361,7 +413,7 @@ export function MarketDashboard() {
                 <div><span><i className="factor-icon orange-bg"><ShieldCheck size={14} /></i>Risk profile</span><strong>{(selected?.volatility ?? 0) > 75 ? "Aggressive" : "Balanced"}</strong></div>
               </div>
               <div className="thesis-box"><div><Sparkles size={16} /><strong>Model thesis</strong></div><p>{selected ? `${selected.symbol} shows ${selected.forecastChange >= 0 ? "constructive" : "defensive"} momentum. The signal is dampened for ${selected.volatility > 60 ? "elevated" : "contained"} volatility, producing a ${selected.confidence}% confidence estimate.` : "The model is building a market thesis."}</p></div>
-              <button className="details-button" onClick={() => setNotice("Prediction details are available from the public API endpoint")}><span>View full prediction details</span><ExternalLink size={15} /></button>
+              <button className="details-button" onClick={() => changeView("signals")}><span>View full prediction details</span><ExternalLink size={15} /></button>
             </aside>
           </section>
 
@@ -389,6 +441,7 @@ export function MarketDashboard() {
               )) : <div className="empty-state"><Search size={24} /><strong>No assets found</strong><span>Try a different search or clear the watchlist filter.</span></div>}
             </div>
           </section>
+          </> : <ProductView view={activeView} assets={assets} favorites={favorites} selectedSymbol={selectedSymbol} wallet={wallet} refreshInterval={refreshInterval} onSelect={setSelectedSymbol} onFavorite={(symbol) => void toggleFavorite(symbol)} onConnectWallet={() => void connectWallet()} onNotify={setNotice} onAlertCount={updateAlertCount} onRefreshInterval={setRefreshInterval} />}
 
           <footer className="dashboard-footer">
             <span><ShieldCheck size={14} /> Experimental research signals · Never financial advice</span>

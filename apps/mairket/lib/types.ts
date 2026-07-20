@@ -8,6 +8,7 @@ export interface PricePoint {
 
 export interface MarketAsset {
   id: string;
+  mint: string | null;
   symbol: string;
   name: string;
   color: string;
@@ -23,6 +24,52 @@ export interface MarketAsset {
   volatility: number;
   signal: Signal;
   history: PricePoint[];
+}
+
+export interface AlertRule {
+  id: string;
+  symbol: string;
+  direction: "above" | "below";
+  targetPrice: number;
+  active: boolean;
+  triggered: boolean;
+  currentPrice: number | null;
+  createdAt: string;
+  lastTriggeredAt: string | null;
+}
+
+export interface PredictionSnapshot {
+  symbol: string;
+  currentPrice: number;
+  forecastPrice: number;
+  forecastChange: number;
+  confidence: number;
+  signal: Signal;
+  createdAt: string;
+}
+
+export interface PortfolioHolding {
+  symbol: string;
+  name: string;
+  mint: string | null;
+  balance: number;
+  price: number;
+  value: number;
+  change24h: number;
+  color: string;
+}
+
+export interface PortfolioResponse {
+  address: string;
+  rpcProvider: string;
+  holdings: PortfolioHolding[];
+  totalValue: number;
+  solBalance: number;
+  trackedTokenAccounts: number;
+  untrackedTokenAccounts: number;
+  tokenDataAvailable: boolean;
+  warning: string | null;
+  updatedAt: string;
 }
 
 export interface MarketResponse {

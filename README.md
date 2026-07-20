@@ -6,7 +6,7 @@ A monorepo for production-grade projects built from the Superteam ecosystem's op
 
 | Project | Description | Stack |
 | --- | --- | --- |
-| [mAIrket](./apps/mairket) | AI-assisted Solana DeFi market forecasts and risk intelligence | Next.js, TypeScript, Recharts |
+| [mAIrket](./apps/mairket) | Full-stack Solana DeFi forecasts, portfolios, watchlists, alerts, and risk intelligence | Next.js, TypeScript, SQLite, Solana RPC, Recharts |
 
 ## Development
 
